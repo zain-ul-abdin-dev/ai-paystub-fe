@@ -17,7 +17,7 @@ document.getElementById('chatForm').addEventListener('submit', async (event) => 
 
   try {
     // Send API request
-    const response = await fetch('http://68.183.69.16:8001/stream/text', {
+    const response = await fetch('https://formfilling-backen-ai-823410206404.us-central1.run.app/stream/text', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
