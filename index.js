@@ -4,7 +4,7 @@ document.getElementById('chatForm').addEventListener('submit', async (event) => 
 
   const userInput = document.getElementById('userInput').value;
   const chatbox = document.getElementById('chatbox');
-
+ 
   // Display user message
   const userMessage = document.createElement('div');
   userMessage.classList.add('user-message');
