@@ -32,26 +32,34 @@ document.getElementById('chatForm').addEventListener('submit', async (event) => 
     // Check if the response is JSON or plain text
     const contentType = response.headers.get('Content-Type');
     let responseData;
-
+    const botMessage = document.createElement('div');
+    botMessage.classList.add('bot-message'); // Handle plain text or JSON response
+    showBotReponse("...");
+    chatbox.appendChild(botMessage);
     if (contentType && contentType.includes('application/json')) {
       responseData = await response.json(); // Parse as JSON
+      showBotReponse('No valid response received from API.')
     } else {
-      responseData = await response.text(); // Parse as plain text
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let done = false;
+      let text = '';
+
+      while (!done) {
+        const { value, done: readerDone } = await reader.read();
+        done = readerDone;
+        text += decoder.decode(value, { stream: true });
+        showBotReponse(text);
+      }
+
+      showBotReponse(text);
     }
 
-    console.log('API Response:', responseData);
+    function showBotReponse(text) {
+      botMessage.textContent = text;
+      chatbox.scrollTop = chatbox.scrollHeight;
+    }
 
-    // Display bot response
-    const botMessage = document.createElement('div');
-    botMessage.classList.add('bot-message');
-
-    // Handle plain text or JSON response
-    botMessage.textContent =
-      typeof responseData === 'string'
-        ? responseData // Plain text response
-        : responseData.response || 'No valid response received from API.'; // JSON response
-    chatbox.appendChild(botMessage);
-    chatbox.scrollTop = chatbox.scrollHeight;
   } catch (error) {
     console.error('Error:', error);
 
