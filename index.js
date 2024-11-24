@@ -16,7 +16,7 @@ document.getElementById('chatForm').addEventListener('submit', async (event) => 
   document.getElementById('userInput').value = '';
 
   try {
-    const response = await fetch('http://127.0.0.1:8001/stream/text', {
+    const response = await fetch('http://206.81.19.236:8001/stream/text', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
