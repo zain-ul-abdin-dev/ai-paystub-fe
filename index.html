@@ -1,30 +1,37 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Chat API Interface</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw=="
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
 </head>
+
 <body>
   <div class="chat-container">
-    <h1>Paystubs Creation AI</h1>
+    <h1><i class="fas fa-file-invoice-dollar"></i> Paystubs Creation AI</h1>
     <div id="chatbox" class="chatbox">
       <div class="bot-message">
-        I'm Paystubs Creation AI. I can help you create your paystub on this page. Just let me know how I can help and I'll do so immediately.
+        I'm Paystubs Creation AI. I can help you create your paystub on this page. Just let me know how I can help and
+        I'll do so immediately.
       </div>
     </div>
     <form id="chatForm" class="chat-form">
-      <input
-        type="text"
-        id="userInput"
-        placeholder="Let me know how I can help you create your paystub."
-        required
-      />
-      <button type="submit">Send</button>
+      <input type="text" id="userInput" placeholder="Let me know how I can help you create your paystub." required />
+      <button type="submit" class="send-btn">
+        <i class="fas fa-paper-plane"></i>
+      </button>
+      <button type="button" class="voice-btn">
+        <i class="fas fa-microphone"></i>
+      </button>
     </form>
   </div>
   <script src="functions.js"></script>
   <script src="index.js"></script>
 </body>
+
 </html>
