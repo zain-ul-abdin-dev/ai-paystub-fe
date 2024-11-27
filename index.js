@@ -1,4 +1,3 @@
-const sessionId = generateSessionId();
 const audioHandler = new AudioHandler();
 let isVoiceModeActive = false;
 
@@ -239,8 +238,4 @@ function processFunctionCalls(functionCalls) {
       console.error('Error processing function call:', error);
     }
   });
-}
-
-function generateSessionId() {
-  return 'session_' + Math.random().toString(36).substring(2, 15);
 }

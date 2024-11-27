@@ -7,12 +7,14 @@ class AudioHandler {
         this.isRecording = false;
         this.chatbox = null;
         this.lastMessageId = null;
-        this.sampleRate = 25000;
+        this.sampleRate = 26000;
         this.onTranscriptReceived = this.handleTranscript.bind(this);
         this.onError = null;
         this.audioBufferQueue = [];
         this.isPlaying = false;
         this.recordedAudioChunks = [];
+        this.speakingStartTime = null;
+        this.speakingThreshold = 500;
     }
 
     async initialize() {
@@ -39,12 +41,12 @@ class AudioHandler {
 
         const connectWebSocket = () => {
             // const wsUrl = `ws://localhost:8001/audio_stream`;
-            const wsUrl = `ws://206.81.19.236:8003/audio_stream`;
+            const wsUrl = `ws://206.81.19.236:8002/audio_stream`;
             this.websocket = new WebSocket(wsUrl);
 
             this.websocket.onopen = () => {
                 console.log('WebSocket connection established');
-                this.websocketStartTime = Date.now(); // Track connection start time
+                this.websocketStartTime = Date.now();
             };
 
             this.websocket.onerror = (error) => {
@@ -76,12 +78,17 @@ class AudioHandler {
 
         processor.onaudioprocess = (e) => {
             if (this.isRecording && this.websocket?.readyState === WebSocket.OPEN) {
+                const numberOfChannels = e.inputBuffer.numberOfChannels;
+                const duration = e.inputBuffer.duration;
+                const length = e.inputBuffer.length;
+                const sampleRate = e.inputBuffer.sampleRate;
                 const audioData = e.inputBuffer.getChannelData(0);
-                const amplitude = this.calculateAmplitude(audioData);
+                const amplitude = this.calculateAmplitude(audioData,);
 
                 if (amplitude > 0.01) { // Threshold for speech (adjust based on testing)
                     console.log('User is speaking...');
-                    this.sendAudioChunk(audioData);
+                    this.handleContinuousSpeaking();
+                    this.sendAudioChunk(audioData, numberOfChannels, duration, length, sampleRate,);
                 } else {
                     console.log('Silence detected...');
                 }
@@ -99,7 +106,15 @@ class AudioHandler {
         for (let i = 0; i < audioData.length; i++) {
             sum += audioData[i] * audioData[i];
         }
-        return Math.sqrt(sum / audioData.length); // Root Mean Square (RMS) Amplitude
+        const amplitude = Math.sqrt(sum / audioData.length);
+
+        if (amplitude > 0.01) { // User is speaking
+            if (!this.speakingStartTime) this.speakingStartTime = Date.now();
+        } else { // Silence detected
+            this.speakingStartTime = null;
+        }
+
+        return amplitude;
     }
 
     stopRecording() {
@@ -179,14 +194,14 @@ class AudioHandler {
         return new Blob([view], { type: "audio/wav" });
     }
 
-    async sendAudioChunk(audioData) {
+    async sendAudioChunk(audioData, numberOfChannels, duration, length, sampleRate,) {
         if (!this.websocket || this.websocket.readyState !== WebSocket.OPEN) return;
         // Save chunk for testing
         const audioArray = Object.values(audioData);
         this.recordedAudioChunks.push(audioArray);
-        // const base64Audio = this.float32ToBase64(audioArray);
-        // this.websocket.send(JSON.stringify({ audio_bytes: base64Audio, sample_rate: this.sampleRate }));
-        this.websocket.send(JSON.stringify({ audio_bytes: audioArray, sample_rate: this.sampleRate }));
+        this.websocket.send(JSON.stringify({
+            audio_bytes: audioArray, numberOfChannels, duration, length, sampleRate, sample_rate: this.sampleRate, session_id: sessionId
+        }));
     }
 
     handleWebSocketMessage(event) {
@@ -220,15 +235,6 @@ class AudioHandler {
         }
     }
 
-    float32ToBase64(float32Array) {
-        const pcm16Array = new Int16Array(float32Array.length);
-        for (let i = 0; i < float32Array.length; i++) {
-            pcm16Array[i] = Math.max(-32768, Math.min(32767, float32Array[i] * 32767));
-        }
-        const uint8Array = new Uint8Array(pcm16Array.buffer);
-        return btoa(String.fromCharCode(...uint8Array));
-    }
-
     base64ToFloat32(base64String) {
         const binaryString = atob(base64String);
         const uint8Array = new Uint8Array(binaryString.length);
@@ -248,8 +254,10 @@ class AudioHandler {
 
             this.audioBufferQueue.push(audioData);
 
-
-            if (this.isPlaying) return;
+            if (this.isPlaying) {
+                console.log("Audio already playing. Queued new audio chunk.");
+                return; // Avoid starting another playback while one is in progress
+            }
 
             this.isPlaying = true;
 
@@ -268,9 +276,23 @@ class AudioHandler {
 
                 const chunkDuration = buffer.duration;
 
+                // Handle stop playback if user interrupts
+                const playPromise = new Promise((resolve) => {
+                    source.onended = resolve;
+                    source.start();
+                });
 
-                source.start();
-                await this.sleep(chunkDuration * 1000);
+                // Await playback or interruption
+                const playResult = await Promise.race([
+                    playPromise,
+                    this.checkForInterruption(chunkDuration),
+                ]);
+
+                if (playResult === "interrupted") {
+                    console.log("Playback interrupted. Stopping audio.");
+                    source.stop();
+                    break;
+                }
             }
 
 
@@ -281,6 +303,18 @@ class AudioHandler {
         }
     }
 
+    // Helper to detect interruptions during playback
+    checkForInterruption(chunkDuration) {
+        return new Promise((resolve) => {
+            setTimeout(() => resolve("completed"), chunkDuration * 1000);
+            const interval = setInterval(() => {
+                if (this.speakingStartTime) {
+                    clearInterval(interval);
+                    resolve("interrupted");
+                }
+            }, 100);
+        });
+    }
 
     sleep(ms) {
         return new Promise((resolve) => setTimeout(resolve, ms));
@@ -293,5 +327,25 @@ class AudioHandler {
 
         this.chatbox.innerHTML += transcript;
         this.chatbox.scrollTop = this.chatbox.scrollHeight;
+    }
+
+    handleContinuousSpeaking() {
+        if (!this.speakingStartTime) return;
+
+        const speakingDuration = Date.now() - this.speakingStartTime;
+
+        console.log(`Speaking duration: ${speakingDuration}ms`);
+        console.log(`Threshold: ${this.speakingThreshold}ms`);
+        console.log(`AI is playing audio: ${this.isPlaying}`);
+
+        if (speakingDuration > this.speakingThreshold) {
+            console.log("Hit the limit:", speakingDuration)
+            if (this.isPlaying) {
+                console.log("User interrupted while AI audio is playing. Stopping playback...");
+                this.audioBufferQueue = [];
+                this.isPlaying = false;
+            }
+            this.speakingStartTime = null;
+        }
     }
 }
