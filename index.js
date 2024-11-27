@@ -15,7 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
 function handleAudioError(error) {
   audioHandler.saveAudioToFile()
   console.error('Audio Error:', error);
-  const chatbox = document.getElementById('chatbox');
 
   if (chatbox) {
     const errorMessage = document.createElement('div');

@@ -5,7 +5,7 @@ class AudioHandler {
         this.mediaRecorder = null;
         this.websocket = null;
         this.isRecording = false;
-        this.chatbox = null;
+        this.messageBox = null;
         this.lastMessageId = null;
         this.sampleRate = 26000;
         this.onTranscriptReceived = this.handleTranscript.bind(this);
@@ -40,8 +40,8 @@ class AudioHandler {
         if (!this.audioContext || !this.mediaStream || this.isRecording) return;
 
         const connectWebSocket = () => {
-            // const wsUrl = `ws://localhost:8001/audio_stream`;
-            const wsUrl = `ws://206.81.19.236:8002/audio_stream`;
+            const wsUrl = `ws://localhost:8001/audio_stream`;
+            // const wsUrl = `ws://206.81.19.236:8002/audio_stream`;
             this.websocket = new WebSocket(wsUrl);
 
             this.websocket.onopen = () => {
@@ -251,41 +251,32 @@ class AudioHandler {
 
     async playAudio(audioData) {
         try {
-
             this.audioBufferQueue.push(audioData);
 
             if (this.isPlaying) {
                 console.log("Audio already playing. Queued new audio chunk.");
-                return; // Avoid starting another playback while one is in progress
+                return;
             }
 
             this.isPlaying = true;
 
             while (this.audioBufferQueue.length > 0) {
-
                 const nextChunk = this.audioBufferQueue.shift();
-
-
                 const buffer = this.audioContext.createBuffer(1, nextChunk.length, this.sampleRate);
                 buffer.copyToChannel(nextChunk, 0);
-
 
                 const source = this.audioContext.createBufferSource();
                 source.buffer = buffer;
                 source.connect(this.audioContext.destination);
 
-                const chunkDuration = buffer.duration;
-
-                // Handle stop playback if user interrupts
                 const playPromise = new Promise((resolve) => {
                     source.onended = resolve;
                     source.start();
                 });
 
-                // Await playback or interruption
                 const playResult = await Promise.race([
                     playPromise,
-                    this.checkForInterruption(chunkDuration),
+                    this.checkForInterruption(buffer.duration),
                 ]);
 
                 if (playResult === "interrupted") {
@@ -294,7 +285,6 @@ class AudioHandler {
                     break;
                 }
             }
-
 
             this.isPlaying = false;
         } catch (error) {
@@ -321,12 +311,12 @@ class AudioHandler {
     }
 
     handleTranscript(transcript, isNew = false) {
-        if (!this.chatbox || isNew)
-            this.chatbox = createBotMessageDiv();
+        if (!this.messageBox || isNew)
+            this.messageBox = createBotMessageDiv();
+        transcript = transcript.replaceAll("\n", "<br>")
         if (!transcript.trim()) return;
-
-        this.chatbox.innerHTML += transcript;
-        this.chatbox.scrollTop = this.chatbox.scrollHeight;
+        this.messageBox.innerHTML += transcript;
+        chatbox.scrollTop = chatbox.scrollHeight;
     }
 
     handleContinuousSpeaking() {
@@ -334,17 +324,11 @@ class AudioHandler {
 
         const speakingDuration = Date.now() - this.speakingStartTime;
 
-        console.log(`Speaking duration: ${speakingDuration}ms`);
-        console.log(`Threshold: ${this.speakingThreshold}ms`);
-        console.log(`AI is playing audio: ${this.isPlaying}`);
-
+        console.log("Thrsold: ", speakingDuration);
         if (speakingDuration > this.speakingThreshold) {
-            console.log("Hit the limit:", speakingDuration)
-            if (this.isPlaying) {
-                console.log("User interrupted while AI audio is playing. Stopping playback...");
-                this.audioBufferQueue = [];
-                this.isPlaying = false;
-            }
+            console.log("User interrupted while AI audio is playing. Stopping playback...");
+            this.audioBufferQueue = []; // Clear any queued audio chunks.
+            this.isPlaying = false; // Stop current playback.
             this.speakingStartTime = null;
         }
     }
