@@ -325,11 +325,11 @@ class AudioHandler {
         const speakingDuration = Date.now() - this.speakingStartTime;
 
         console.log("Thrsold: ", speakingDuration);
-        if (speakingDuration > this.speakingThreshold) {
-            console.log("User interrupted while AI audio is playing. Stopping playback...");
-            this.audioBufferQueue = []; // Clear any queued audio chunks.
-            this.isPlaying = false; // Stop current playback.
-            this.speakingStartTime = null;
-        }
+        // if (speakingDuration > this.speakingThreshold) {
+        //     console.log("User interrupted while AI audio is playing. Stopping playback...");
+        //     this.audioBufferQueue = []; // Clear any queued audio chunks.
+        //     this.isPlaying = false; // Stop current playback.
+        //     this.speakingStartTime = null;
+        // }
     }
 }
