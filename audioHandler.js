@@ -216,8 +216,8 @@ class AudioHandler {
                 this.playAudio(audioArray);
             }
 
-            if (message.transcript) {
-                this.onTranscriptReceived(message.transcript, message.new);
+            if (message.transcript || message.new) {
+                this.onTranscriptReceived(message.transcript || "", message.new);
             }
 
             if (message.function_name && message.inputs) {
